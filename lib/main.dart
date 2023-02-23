@@ -1,28 +1,26 @@
 import 'dart:math';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:device_apps/device_apps.dart';
 import 'package:mallory_launcher/routes.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/services.dart';
-import 'package:yaml/yaml.dart';
 import 'package:http/http.dart' as http;
 
 // Filthy global for now
-double appWidth = 100;
+double appWidth = 150;
 double appHeight = 100;
 double maxAmplitude = 30;
 double rowHeight = appHeight +
     (iconSize * 2) +
     (maxAmplitude * 2); // apppHeight + 2 * maxAmplitude
 // Icon size
-double iconSize = 56;
+double iconSize = 48;
 const double textFontSize = 13;
 // Number of rows
 int numRows = 3;
 
-Future<String> getConfigFile() {
-  return http.read(Uri.https('github.com', 'shelson/foobar.txt'));
+Future<String> getConfigFile() async {
+  return http.read(Uri.https('raw.githubusercontent.com',
+      '/shelson/mallory_launcher/main/config/config.yaml'));
 }
 
 final Future<List<Application>> _getApps = DeviceApps.getInstalledApplications(
@@ -30,6 +28,18 @@ final Future<List<Application>> _getApps = DeviceApps.getInstalledApplications(
   includeSystemApps: false,
   includeAppIcons: true,
 );
+
+double getWaveHeight(row, index, offset) {
+  //print("Offset: " + offset.toString());
+  double frequency = 0.009; //five wobbles across the screen
+  double xValue = 0;
+  xValue = (index * appWidth) - offset;
+  double yValue = (maxAmplitude * sin(frequency * xValue)) + maxAmplitude;
+  //print("X: " + xValue.toString());
+  //print("Y: " + yValue.toString());
+
+  return yValue;
+}
 
 class SineWaveModel extends ChangeNotifier {
   final List<List<double>> _appHeights = [];
@@ -59,18 +69,6 @@ Future<void> main() async {
 
   runApp(ChangeNotifierProvider(
       create: (context) => SineWaveModel(), child: const MyApp()));
-}
-
-double getWaveHeight(row, index, offset) {
-  //print("Offset: " + offset.toString());
-  double frequency = 0.009; //five wobbles across the screen
-  double xValue = 0;
-  xValue = (index * appWidth) - offset;
-  double yValue = (maxAmplitude * sin(frequency * xValue)) + maxAmplitude;
-  //print("X: " + xValue.toString());
-  //print("Y: " + yValue.toString());
-
-  return yValue;
 }
 
 class MyApp extends StatelessWidget {
@@ -170,9 +168,14 @@ class _MyHomePageState extends State<MyHomePage> {
         future: _getApps,
         builder: (context, snapshot) {
           if (snapshot.hasData) {
-            print("Apps: " + snapshot.data.toString());
+            //print("Apps: " + snapshot.data.toString());
+            int appCount = snapshot.data!.length;
+            int appThird = appCount ~/ 3;
+            List<Application> rowApps = snapshot.data!.sublist(
+                (row - 1) * appThird,
+                row == 3 ? snapshot.data!.length : row * appThird);
             Provider.of<SineWaveModel>(context, listen: false)
-                .initAppHeights(row, snapshot.data!.length);
+                .initAppHeights(row, rowApps.length);
             return Expanded(
               child: NotificationListener<ScrollNotification>(
                 onNotification: (scrollNotification) {
@@ -191,60 +194,50 @@ class _MyHomePageState extends State<MyHomePage> {
                 },
                 child: ListView.builder(
                     scrollDirection: Axis.horizontal,
-                    itemCount: snapshot.data!.length,
+                    itemCount: rowApps.length,
                     itemBuilder: (context, index) {
                       ApplicationWithIcon current =
-                          snapshot.data![index] as ApplicationWithIcon;
-                      return InkWell(
-                          onTap: () {
-                            DeviceApps.openApp(current.packageName);
-                          },
-                          child: appStackWidget(current, row, index));
+                          rowApps[index] as ApplicationWithIcon;
+                      return appIconWidget(current, row, index);
                     }),
               ),
             );
           } else {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
         });
-    return Center(child: CircularProgressIndicator());
   }
 
-  Widget appStackWidget(ApplicationWithIcon currentApp, int row, int index) {
-    return Stack(alignment: Alignment.topLeft, children: [
-      Consumer<SineWaveModel>(builder: (context, heights, child) {
-        return Container(
-          width: appWidth,
-          height: rowHeight,
-          alignment: Alignment.topCenter, //define the size of text widget here
-          margin: EdgeInsets.only(left: 15, top: 0, bottom: 0, right: 15),
-          padding: EdgeInsets.only(
-              left: 0,
-              top: appHeight - heights.getAppHeight(row, index),
-              bottom: heights.getAppHeight(row, index),
-              right: 0),
-          child: Column(children: [
-            CircleAvatar(
-              backgroundColor: Colors.transparent,
-              radius: iconSize / 2,
-              child: Image.memory(
-                currentApp.icon,
-                gaplessPlayback: true,
-                width: iconSize,
-                height: iconSize,
-              ),
-            ),
-            Text(
-              currentApp.appName,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  color: Colors.blueGrey,
-                  fontSize: textFontSize,
-                  fontWeight: FontWeight.normal),
-            )
-          ]),
-        );
-      }),
-    ]);
+  Widget appIconWidget(ApplicationWithIcon currentApp, int row, int index) {
+    return Consumer<SineWaveModel>(builder: (context, heights, child) {
+      double waveAppHeight = heights.getAppHeight(row, index);
+      return newIcon(waveAppHeight, currentApp);
+    });
+  }
+
+  Container newIcon(double waveAppHeight, ApplicationWithIcon currentApp) {
+    return Container(
+      width: appWidth,
+      height: rowHeight,
+      alignment: Alignment.topLeft, //define the size of text widget here
+      //margin: const EdgeInsets.only(left: 1, top: 0, bottom: 0, right: 1),
+      padding: EdgeInsets.only(
+          top: appHeight - waveAppHeight, bottom: waveAppHeight),
+      child: TextButton.icon(
+        icon: Column(children: [
+          Image.memory(currentApp.icon,
+              width: iconSize, height: iconSize, gaplessPlayback: true),
+          Text(
+            currentApp.appName.length > 18
+                ? currentApp.appName.substring(0, 18)
+                : currentApp.appName,
+          )
+        ]),
+        label: const Text(""),
+        onPressed: () {
+          DeviceApps.openApp(currentApp.packageName);
+        },
+      ),
+    );
   }
 }

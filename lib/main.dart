@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:device_apps/device_apps.dart';
 import 'package:mallory_launcher/routes.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
 
 // Filthy global for now
 double appWidth = 150;
@@ -17,11 +16,6 @@ double iconSize = 48;
 const double textFontSize = 13;
 // Number of rows
 int numRows = 3;
-
-Future<String> getConfigFile() async {
-  return http.read(Uri.https('raw.githubusercontent.com',
-      '/shelson/mallory_launcher/main/config/config.yaml'));
-}
 
 final Future<List<Application>> _getApps = DeviceApps.getInstalledApplications(
   onlyAppsWithLaunchIntent: true,

@@ -1,0 +1,21 @@
+tablet_owner: 'Mallory'
+Games:
+  row: 1
+  apps:
+    - 'com.simple.farm.merge.game'
+    - 'com.halfbrick.fruitninjafree'
+    - 'kr.co.smartstudy.dinoworld_android_googlemarket'
+    - 'com.budgestudios.ludorum.chuggington'
+    - 'com.storytoys.chuggington.wearethechuggineers.free.android.googleplay'
+    - 'net.cleverbit.DinoPuzzles'
+Colouring and Learning:
+  row: 2
+  apps:
+    - 'com.storytoys.disney.pixar.coloring.princess.googleplay'
+    - 'com.rvappstudios.kids.coloring.book.color.painting'
+    - 'kr.co.smartstudy.numberszoo_android_googlemarket'
+    - 'uk.co.bluezoo.meetthealphablocks2'
+Other:
+  row: 3
+  apps:
+    - 'com.govee.home'

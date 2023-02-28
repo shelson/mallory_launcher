@@ -5,30 +5,31 @@ import 'package:mallory_launcher/routes.dart';
 import 'package:provider/provider.dart';
 
 // Filthy global for now
-double appWidth = 150;
-double appHeight = 100;
-double maxAmplitude = 30;
-double rowHeight = appHeight +
-    (iconSize * 2) +
-    (maxAmplitude * 2); // apppHeight + 2 * maxAmplitude
+double appWidth = 90;
+double maxAmplitude = 10;
 // Icon size
-double iconSize = 48;
-const double textFontSize = 13;
+double iconSize = 56;
+const double textFontSize = 15;
 // Number of rows
-int numRows = 3;
+int numRows = 4;
+
+// test data
+int numTestApps = 50;
+bool addTestApps = true;
 
 final Future<List<Application>> _getApps = DeviceApps.getInstalledApplications(
   onlyAppsWithLaunchIntent: true,
-  includeSystemApps: false,
+  includeSystemApps: true,
   includeAppIcons: true,
 );
 
-double getWaveHeight(row, index, offset) {
+double getWaveHeightAbsolute(index, offset) {
+  var maxAmplitudeHere = 1;
   //print("Offset: " + offset.toString());
-  double frequency = 0.009; //five wobbles across the screen
+  double frequency = 0.002; //five wobbles across the screen
   double xValue = 0;
   xValue = (index * appWidth) - offset;
-  double yValue = (maxAmplitude * sin(frequency * xValue)) + maxAmplitude;
+  double yValue = (maxAmplitudeHere * sin(frequency * xValue));
   //print("X: " + xValue.toString());
   //print("Y: " + yValue.toString());
 
@@ -36,23 +37,20 @@ double getWaveHeight(row, index, offset) {
 }
 
 class SineWaveModel extends ChangeNotifier {
-  final List<List<double>> _appHeights = [];
+  final List<double> _appHeights = [];
 
-  double getAppHeight(row, index) => _appHeights[row][index];
+  double getAppHeight(index) => _appHeights[index];
 
-  void initAppHeights(row, appCount) {
-    for (int i = 0; i <= numRows; i++) {
-      _appHeights.add([]);
-    }
+  void initAppHeights(appCount) {
     for (int i = 0; i < appCount; i++) {
-      _appHeights[row].add(getWaveHeight(row, i, 0));
+      _appHeights.add(getWaveHeightAbsolute(i, 0));
     }
     //notifyListeners();
   }
 
-  void handleScrollEvent(row, offsetPixels) {
-    for (MapEntry entry in _appHeights[row].asMap().entries) {
-      _appHeights[row][entry.key] = getWaveHeight(row, entry.key, offsetPixels);
+  void handleScrollEvent(offsetPixels) {
+    for (MapEntry entry in _appHeights.asMap().entries) {
+      _appHeights[entry.key] = getWaveHeightAbsolute(entry.key, offsetPixels);
     }
     notifyListeners();
   }
@@ -123,77 +121,53 @@ class _MyHomePageState extends State<MyHomePage> {
     // fast, so that you can just rebuild anything that needs updating rather
     // than having to individually change instances of widgets.
     return Scaffold(
-      body: Column(
-        children: <Widget>[
-          Expanded(
-            child: Container(
-              height: rowHeight,
-              color: Color.fromARGB(255, 237, 190, 209),
-              child: Row(
-                children: <Widget>[appListWidget(1)],
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              height: rowHeight,
-              color: Color.fromARGB(255, 213, 235, 188),
-              child: Row(
-                children: <Widget>[appListWidget(2)],
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              height: rowHeight,
-              color: Color.fromARGB(255, 226, 198, 163),
-              child: Row(
-                children: <Widget>[appListWidget(3)],
-              ),
-            ),
-          )
-        ],
-      ),
-    );
+        body: Center(
+      child: appGridWidget(),
+    ));
   }
 
-  Widget appListWidget(row) {
+  Widget appGridWidget() {
     return FutureBuilder(
         future: _getApps,
         builder: (context, snapshot) {
           if (snapshot.hasData) {
-            //print("Apps: " + snapshot.data.toString());
-            int appCount = snapshot.data!.length;
-            int appThird = appCount ~/ 3;
-            List<Application> rowApps = snapshot.data!.sublist(
-                (row - 1) * appThird,
-                row == 3 ? snapshot.data!.length : row * appThird);
+            // Provider.of<SineWaveModel>(context, listen: false)
+            //    .initAppHeights(snapshot.data!.length);
             Provider.of<SineWaveModel>(context, listen: false)
-                .initAppHeights(row, rowApps.length);
-            return Expanded(
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (scrollNotification) {
-                  if (scrollNotification is ScrollStartNotification) {
-                    //_onStartScroll(scrollNotification.metrics);
-                  } else if (scrollNotification is ScrollUpdateNotification) {
-                    Provider.of<SineWaveModel>(context, listen: false)
-                        .handleScrollEvent(
-                            row, scrollNotification.metrics.pixels);
-                  } else if (scrollNotification is ScrollEndNotification) {
-                    Provider.of<SineWaveModel>(context, listen: false)
-                        .handleScrollEvent(
-                            row, scrollNotification.metrics.pixels);
-                  }
-                  return false;
-                },
-                child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: rowApps.length,
-                    itemBuilder: (context, index) {
+                .initAppHeights(numTestApps);
+            return NotificationListener<ScrollNotification>(
+              onNotification: (scrollNotification) {
+                if (scrollNotification is ScrollStartNotification) {
+                  //_onStartScroll(scrollNotification.metrics);
+                } else if (scrollNotification is ScrollUpdateNotification) {
+                  Provider.of<SineWaveModel>(context, listen: false)
+                      .handleScrollEvent(scrollNotification.metrics.pixels);
+                } else if (scrollNotification is ScrollEndNotification) {
+                  Provider.of<SineWaveModel>(context, listen: false)
+                      .handleScrollEvent(scrollNotification.metrics.pixels);
+                }
+                return false;
+              },
+              child: GridView.count(
+                childAspectRatio: 2,
+                mainAxisSpacing: 10,
+                scrollDirection: Axis.horizontal,
+                shrinkWrap: true,
+                crossAxisCount: numRows,
+                physics: const BouncingScrollPhysics(),
+                children: List.generate(snapshot.data!.length, (index) {
                       ApplicationWithIcon current =
-                          rowApps[index] as ApplicationWithIcon;
-                      return appIconWidget(current, row, index);
+                          snapshot.data![index] as ApplicationWithIcon;
+                      return iconContainer(current, index);
+                    }) +
+                    List.generate(numTestApps, (index) {
+                      return iconContainer(
+                          snapshot
+                              .data![index.remainder(snapshot.data!.length)],
+                          index); // Use the first
                     }),
+                //children:
+                //    List.generate(numTestApps, (index) => basicText(index)),
               ),
             );
           } else {
@@ -202,36 +176,36 @@ class _MyHomePageState extends State<MyHomePage> {
         });
   }
 
-  Widget appIconWidget(ApplicationWithIcon currentApp, int row, int index) {
+  Widget iconContainer(currentApp, index) {
     return Consumer<SineWaveModel>(builder: (context, heights, child) {
-      double waveAppHeight = heights.getAppHeight(row, index);
-      return newIcon(waveAppHeight, currentApp);
+      double waveAppHeight = heights.getAppHeight(index);
+      return Container(
+        //height: 100,
+        child: Align(
+          alignment: Alignment(0, waveAppHeight),
+          child: appIconWidget(waveAppHeight, currentApp),
+        ),
+      );
     });
   }
 
-  Container newIcon(double waveAppHeight, ApplicationWithIcon currentApp) {
-    return Container(
-      width: appWidth,
-      height: rowHeight,
-      alignment: Alignment.topLeft, //define the size of text widget here
-      //margin: const EdgeInsets.only(left: 1, top: 0, bottom: 0, right: 1),
-      padding: EdgeInsets.only(
-          top: appHeight - waveAppHeight, bottom: waveAppHeight),
-      child: TextButton.icon(
-        icon: Column(children: [
-          Image.memory(currentApp.icon,
-              width: iconSize, height: iconSize, gaplessPlayback: true),
-          Text(
-            currentApp.appName.length > 18
-                ? currentApp.appName.substring(0, 18)
-                : currentApp.appName,
-          )
-        ]),
-        label: const Text(""),
-        onPressed: () {
-          DeviceApps.openApp(currentApp.packageName);
-        },
-      ),
+  Widget appIconWidget(waveAppHeight, currentApp) {
+    return Wrap(
+      direction: Axis.vertical,
+      spacing: 5,
+      alignment: WrapAlignment.center,
+      children: [
+        Image.memory(currentApp.icon,
+            width: iconSize,
+            height: iconSize,
+            alignment: Alignment.centerRight,
+            gaplessPlayback: true),
+        Text(
+          currentApp.appName,
+          style: const TextStyle(fontSize: textFontSize),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }

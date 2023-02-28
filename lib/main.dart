@@ -5,7 +5,7 @@ import 'package:mallory_launcher/routes.dart';
 import 'package:provider/provider.dart';
 
 // Filthy global for now
-double appWidth = 90;
+double appWidth = 60;
 double maxAmplitude = 10;
 // Icon size
 double iconSize = 56;
@@ -151,6 +151,7 @@ class _MyHomePageState extends State<MyHomePage> {
               child: GridView.count(
                 childAspectRatio: 2,
                 mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
                 scrollDirection: Axis.horizontal,
                 shrinkWrap: true,
                 crossAxisCount: numRows,
@@ -180,6 +181,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return Consumer<SineWaveModel>(builder: (context, heights, child) {
       double waveAppHeight = heights.getAppHeight(index);
       return Container(
+        color: Colors.blueGrey,
         //height: 100,
         child: Align(
           alignment: Alignment(0, waveAppHeight),
@@ -198,7 +200,7 @@ class _MyHomePageState extends State<MyHomePage> {
         Image.memory(currentApp.icon,
             width: iconSize,
             height: iconSize,
-            alignment: Alignment.centerRight,
+            alignment: Alignment.center,
             gaplessPlayback: true),
         Text(
           currentApp.appName,
